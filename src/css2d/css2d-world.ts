@@ -1,4 +1,5 @@
 import { IUpdateable } from "@/common/interfaces/updatable";
+import { createResizer } from "@/common/systems/resizer.js";
 import { WorldPrototype } from "@/common/world-prototype.js";
 import * as THREE from "three";
 import { CSS2DObject, CSS2DRenderer, OrbitControls } from "three/examples/jsm/Addons";
@@ -17,6 +18,12 @@ class Css2dWorld extends WorldPrototype {
         this.addLights(this.scene);
         this.initGui();
         this.addAxesHelper(this.scene);
+
+        const resizer = createResizer(container, this.camera, this.renderer);
+        resizer.resize = () => {
+            this.labelRenderer.setSize(container.clientWidth, container.clientHeight);
+        };
+
         this.addObjects();
         this.loop.addUpdatable(this.getUpdatable());
         this.scene.background = new THREE.Color('black');

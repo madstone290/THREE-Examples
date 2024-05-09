@@ -20,7 +20,7 @@ class WorldPrototype {
         this.renderer = this.createRenderer(container);
         this.loop = createLoop(this.camera, this.scene, this.renderer);
         this.gui = new GUI();
-        createResizer(container, this.camera, this.renderer);
+
         createStats(container, this.loop);
     }
 
