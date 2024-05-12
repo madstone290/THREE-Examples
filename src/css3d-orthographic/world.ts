@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CSS3DObject, CSS3DRenderer, OrbitControls } from "three/examples/jsm/Addons";
+import { CSS3DObject, CSS3DRenderer, OrbitControls } from "three/examples/jsm/Addons.js";
 
 
 class World {

@@ -1,8 +1,8 @@
-import { IUpdateable } from "@/common/interfaces/updatable";
+import { IUpdateable } from "@/common/interfaces/updatable.js";
 import { createResizer } from "@/common/systems/resizer.js";
 import { WorldPrototype } from "@/common/world-prototype.js";
 import * as THREE from "three";
-import { CSS2DObject, CSS2DRenderer, OrbitControls } from "three/examples/jsm/Addons";
+import { CSS2DObject, CSS2DRenderer, OrbitControls } from "three/examples/jsm/Addons.js";
 
 const EARTH_RADIUS = 1;
 const MOON_RADIUS = 0.27;
