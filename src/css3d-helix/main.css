@@ -13,7 +13,8 @@ html, body {
 #container {
     position: relative;
     margin: auto;
-    width: 100%;
+    width: 80%;
+    height: 100%;
     background-color: #000000;
 }
 #poll {

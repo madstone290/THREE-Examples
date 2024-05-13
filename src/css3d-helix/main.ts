@@ -39,22 +39,44 @@ let currentPaintingIndex = 0;
 
 let lastMoveTime = Date.now();
 
-let moveLimit = 100;
+/**
+ * 카메라 이동 제한 시간. ms 단위
+ */
+let moveLimit = 50;
 
 function createPaintingCSS(painting: Painting) {
-    const element = document.createElement('div');
-    element.className = 'element';
-    element.style.width = '20rem';
-    element.style.height = '32rem';
-    element.style.backgroundColor = 'rgba(0,127,127,' + (Math.random() * 0.5 + 0.25) + ')';
+    const frame = document.createElement('div');
+    frame.className = 'element';
+    frame.style.width = '20rem';
+    frame.style.height = 'fit-content';
+    frame.style.backgroundColor = 'rgba(0,127,127,' + (Math.random() * 0.5 + 0.25) + ')';
 
     const img = document.createElement('img');
     img.src = `/assets/images/paintings/${painting.file}`;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    element.appendChild(img);
+    img.style.width = '20rem';
+    img.style.height = '30rem';
+    frame.appendChild(img);
 
-    const paintingCSS = new CSS3DObject(element);
+    const info = document.createElement('div');
+    info.style.boxSizing = 'border-box';
+    info.style.width = '100%';
+    info.style.fontSize = '1.5rem';
+    info.style.height = 'fit-content';
+    info.style.padding = '1rem';
+    info.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    info.style.color = 'white';
+    frame.appendChild(info);
+
+    const title = document.createElement('div');
+    title.textContent = painting.name;
+    info.appendChild(title);
+
+    const artist = document.createElement('div');
+    artist.textContent = painting.artist;
+    info.appendChild(artist);
+
+
+    const paintingCSS = new CSS3DObject(frame);
     paintingCSS.position.x = Math.random() * 4000 - 2000;
     paintingCSS.position.y = Math.random() * 4000 - 2000;
     paintingCSS.position.z = Math.random() * 4000 - 2000;
@@ -66,7 +88,7 @@ function addNavButtons() {
     buttonNext.innerText = 'Next';
     buttonNext.style.position = 'absolute';
     buttonNext.style.top = '50%';
-    buttonNext.style.right = '-10rem';
+    buttonNext.style.right = '-10%';
     buttonNext.addEventListener('click', () => moveCameraToNextPainting());
     containerEl.appendChild(buttonNext);
 
@@ -74,7 +96,7 @@ function addNavButtons() {
     buttonPrevious.innerText = 'Previous';
     buttonPrevious.style.position = 'absolute';
     buttonPrevious.style.top = '50%';
-    buttonPrevious.style.left = '-10rem';
+    buttonPrevious.style.left = '-10%';
     buttonPrevious.addEventListener('click', () => moveCameraToPreviousPainting());
     containerEl.appendChild(buttonPrevious);
 }
@@ -123,10 +145,10 @@ function init() {
     containerEl.appendChild(webGLRenderer.domElement);
 
     cssRenderer = new CSS3DRenderer();
-    cssRenderer.setSize(window.innerWidth, window.innerHeight);
-
+    cssRenderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
     cssRenderer.domElement.style.top = '0px';
     cssRenderer.domElement.style.width = '100%';
+    cssRenderer.domElement.style.position = 'absolute';
     containerEl.appendChild(cssRenderer.domElement);
 
     controls = new OrbitControls(camera, cssRenderer.domElement);
@@ -266,10 +288,12 @@ function transform(targets: THREE.Object3D[], duration: number): void {
 
 function onWindowResize() {
 
-    camera.aspect = window.innerWidth / window.innerHeight;
+
+    camera.aspect = containerEl.clientWidth / containerEl.clientHeight;
     camera.updateProjectionMatrix();
 
-    cssRenderer.setSize(window.innerWidth, window.innerHeight);
+    webGLRenderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
+    cssRenderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
 
     render();
 
@@ -288,4 +312,5 @@ function render() {
 }
 
 init();
+render();
 animate();
