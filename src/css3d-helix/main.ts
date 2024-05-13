@@ -231,12 +231,22 @@ function moveCameraToPreviousPainting() {
     lastMoveTime = Date.now();
 }
 
-function lookAtPainting(number: number) {
-    if (number < 0 || number >= paintingItems.length) {
+function lookAtPainting(index: number) {
+    if (index < 0 || index >= paintingItems.length) {
         return;
     }
-    const nextCamera = cameraHolders[number];
-    const nextPainting = paintingHolders[number];
+    const nextCamera = cameraHolders[index];
+    const nextPainting = paintingHolders[index];
+
+    const painting = paintingItems[index];
+    new TWEEN.Tween(painting.scale)
+        .to({
+            x: 1.5,
+            y: 1.5,
+            z: 1.5
+        }, 1000)
+        .easing(TWEEN.Easing.Exponential.InOut)
+        .start();
 
     new TWEEN.Tween(controls.object.position)
         .to({
@@ -254,6 +264,11 @@ function lookAtPainting(number: number) {
             z: nextPainting.position.z
         }, 500)
         .easing(TWEEN.Easing.Exponential.InOut)
+        .start();
+
+    new TWEEN.Tween({})
+        .to({}, 1000)
+        .onUpdate(() => render())
         .start();
 }
 
