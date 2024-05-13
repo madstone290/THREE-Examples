@@ -54,21 +54,21 @@ function createPaintingCSS(painting: Painting) {
     frame.className = 'element';
     frame.style.width = '24rem';
     frame.style.height = 'fit-content';
-    frame.style.backgroundColor = 'rgba(0,127,127,' + (Math.random() * 0.5 + 0.25) + ')';
+    //frame.style.backgroundColor = 'rgba(0,127,127,' + (Math.random() * 0.5 + 0.25) + ')';
 
     const img = document.createElement('img');
     img.src = `/assets/images/paintings/${painting.file}`;
-    img.style.width = '24rem';
-    img.style.height = '30rem';
+    img.style.objectFit = 'contain';
+    img.style.width = '100%';
+    img.style.margin = '0';
     frame.appendChild(img);
 
     const info = document.createElement('div');
     info.style.boxSizing = 'border-box';
     info.style.width = '100%';
     info.style.fontSize = '1.5rem';
-    info.style.height = 'fit-content';
     info.style.padding = '1rem';
-    info.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    info.style.backgroundColor = 'rgba(0,127,127, 0.8)';
     info.style.color = 'white';
     frame.appendChild(info);
 
