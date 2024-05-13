@@ -1,22 +1,45 @@
 import * as THREE from 'three';
 import TWEEN from "three/examples/jsm/libs/tween.module.js"
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import { PAINTING_LIST, Painting } from './painting-list.js';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
-import { cameraPosition } from 'three/examples/jsm/nodes/Nodes.js';
 
+/*
+Helix 형태로 그림을 배치하는 예제
+그림을 랜덤한 위치에 배치하고, 애니메이션을 통해 Helix 형태로 배치한다.
+좌/우 화살표 키를 누르면 카메라가 다음/이전 그림을 바라보도록 이동한다.
+휠을 이용해 카메라를 다음/이전 그림으로 이동할 수 있다.
+*/
 let containerEl: HTMLElement = document.getElementById('container')!;
 let camera: THREE.PerspectiveCamera;
 let scene: THREE.Scene;
 let webGLRenderer: THREE.WebGLRenderer;
 let cssRenderer: CSS3DRenderer;
-//let controls: TrackballControls;
 let controls: OrbitControls;
 
+/**
+ * 그림을 저장하는 배열
+ */
 const paintingItems: THREE.Object3D[] = [];
-const targets: THREE.Object3D[] = [];
-const lookAtPositions : THREE.Vector3[] = [];
+
+/**
+ * 헬릭스에서 그림의 위치를 저장하는 배열
+ */
+const paintingHolders: THREE.Object3D[] = [];
+
+/**
+ * 헬릭스에서 카메라의 위치를 저장하는 배열
+ */
+const cameraHolders: THREE.Object3D[] = [];
+
+/**
+ * 현재 보고 있는 그림의 인덱스
+ */
+let currentPaintingIndex = 0;
+
+let lastMoveTime = Date.now();
+
+let moveLimit = 100;
 
 function createPaintingCSS(painting: Painting) {
     const element = document.createElement('div');
@@ -38,6 +61,50 @@ function createPaintingCSS(painting: Painting) {
     return paintingCSS;
 }
 
+function addNavButtons() {
+    const buttonNext = document.createElement('button');
+    buttonNext.innerText = 'Next';
+    buttonNext.style.position = 'absolute';
+    buttonNext.style.top = '50%';
+    buttonNext.style.right = '-10rem';
+    buttonNext.addEventListener('click', () => moveCameraToNextPainting());
+    containerEl.appendChild(buttonNext);
+
+    const buttonPrevious = document.createElement('button');
+    buttonPrevious.innerText = 'Previous';
+    buttonPrevious.style.position = 'absolute';
+    buttonPrevious.style.top = '50%';
+    buttonPrevious.style.left = '-10rem';
+    buttonPrevious.addEventListener('click', () => moveCameraToPreviousPainting());
+    containerEl.appendChild(buttonPrevious);
+}
+
+function addPaintingCheckBox() {
+    const formItemsEl = document.getElementById('form-items')!;
+    for (const painting of PAINTING_LIST) {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.alignItems = 'center';
+        div.style.justifyContent = "flex-start";
+        div.style.width = '100%';
+        div.style.paddingLeft = '1rem';
+        div.style.fontSize = '1.5rem';
+
+        const inputEl = document.createElement('input');
+        inputEl.type = 'checkbox';
+        inputEl.style.width = '1.5rem';
+        inputEl.style.height = '1.5rem';
+        inputEl.style.marginRight = '1rem';
+        div.appendChild(inputEl);
+
+        const label = document.createElement('label');
+        label.innerText = painting.name;
+        div.appendChild(label);
+
+        formItemsEl.appendChild(div);
+    }
+}
+
 function init() {
 
     camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
@@ -47,11 +114,26 @@ function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
 
+
+
     webGLRenderer = new THREE.WebGLRenderer();
     webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+    webGLRenderer.domElement.style.width = '100%';
+    webGLRenderer.domElement.style.position = 'absolute';
     containerEl.appendChild(webGLRenderer.domElement);
 
-  
+    cssRenderer = new CSS3DRenderer();
+    cssRenderer.setSize(window.innerWidth, window.innerHeight);
+
+    cssRenderer.domElement.style.top = '0px';
+    cssRenderer.domElement.style.width = '100%';
+    containerEl.appendChild(cssRenderer.domElement);
+
+    controls = new OrbitControls(camera, cssRenderer.domElement);
+    controls.addEventListener('change', () => render());
+    controls.enableZoom = false;
+    controls.enablePan = false;
+
     for (let i = 0; i < PAINTING_LIST.length; i++) {
         const paintingCSS = createPaintingCSS(PAINTING_LIST[i]);
         scene.add(paintingCSS);
@@ -60,72 +142,97 @@ function init() {
         const theta = i * 0.3 + Math.PI;
         const y = - (i * 80) + 450;
 
-        const paintingPosition = new THREE.Object3D();
-        paintingPosition.position.setFromCylindricalCoords(1600, theta, y);
+        const paintingHolder = new THREE.Object3D();
+        paintingHolder.position.setFromCylindricalCoords(1600, theta, y);
+        paintingHolders.push(paintingHolder);
 
-        // 모니터를 바라보도록 설정
-        const paintingLookAtPosition = new THREE.Vector3();
-        paintingLookAtPosition.x = paintingPosition.position.x * 2;
-        paintingLookAtPosition.y = paintingPosition.position.y;
-        paintingLookAtPosition.z = paintingPosition.position.z * 2;
-        lookAtPositions.push(paintingLookAtPosition);
+        const cameraHolder = new THREE.Object3D();
+        cameraHolder.position.x = paintingHolder.position.x * 2;
+        cameraHolder.position.y = paintingHolder.position.y;
+        cameraHolder.position.z = paintingHolder.position.z * 2;
+        cameraHolders.push(cameraHolder);
 
-        paintingPosition.lookAt(paintingLookAtPosition);
-        targets.push(paintingPosition);
+        paintingHolder.lookAt(cameraHolder.position);
+        cameraHolder.lookAt(paintingHolder.position);
     }
 
-    cssRenderer = new CSS3DRenderer();
-    cssRenderer.setSize(window.innerWidth, window.innerHeight);
-    containerEl.appendChild(cssRenderer.domElement);
-    cssRenderer.domElement.style.position = 'absolute';
-    cssRenderer.domElement.style.top = '0px';
-
-    //
-
-    // controls = new TrackballControls(camera, renderer.domElement);
-    // controls.rotateSpeed = 10;
-    // controls.minDistance = 500;
-    // controls.maxDistance = 6000;
-    controls = new OrbitControls(camera, cssRenderer.domElement);
-
-    controls.addEventListener('change', render);
 
     window.addEventListener('resize', onWindowResize);
-
-    transform(targets, 2000);
-
-    let paintingNumber = 0;
     window.addEventListener("keydown", (event) => {
-
         switch (event.key) {
-            // if right arrow, camera move to the next painting
             case "ArrowRight":
-                lookAtPainting(paintingNumber++);
+                moveCameraToNextPainting();
                 break;
-            // if left arrow, camera move to the previous painting
             case "ArrowLeft":
-                lookAtPainting(paintingNumber--);
+                moveCameraToPreviousPainting();
                 break;
-
         }
     });
+
+    containerEl.addEventListener("wheel", (event) => {
+        if (0 < event.deltaY) {
+            if (currentPaintingIndex < paintingItems.length) {
+                event.preventDefault();
+                moveCameraToNextPainting();
+            }
+        }
+        else if (event.deltaY < 0) {
+            moveCameraToPreviousPainting();
+        }
+        console.log(currentPaintingIndex);
+    });
+
+    transform(paintingHolders, 2000);
+    lookAtPainting(0);
+    addNavButtons();
+
+    addPaintingCheckBox();
+}
+
+function moveCameraToNextPainting() {
+    if (Date.now() - lastMoveTime < moveLimit) {
+        return;
+    }
+    currentPaintingIndex++;
+    lookAtPainting(currentPaintingIndex);
+    lastMoveTime = Date.now();
+}
+
+function moveCameraToPreviousPainting() {
+    if (Date.now() - lastMoveTime < moveLimit) {
+        return;
+    }
+    currentPaintingIndex--;
+    if (currentPaintingIndex < 0)
+        currentPaintingIndex = 0;
+    lookAtPainting(currentPaintingIndex);
+    lastMoveTime = Date.now();
 }
 
 function lookAtPainting(number: number) {
-    const location = targets[number];
-    const lookAt = lookAtPositions[number];
-    new TWEEN.Tween(camera.position)
-        .to({ x: lookAt.x, y: lookAt.y, z: lookAt.z }, 2000)
+    if (number < 0 || number >= paintingItems.length) {
+        return;
+    }
+    const nextCamera = cameraHolders[number];
+    const nextPainting = paintingHolders[number];
+
+    new TWEEN.Tween(controls.object.position)
+        .to({
+            x: nextCamera.position.x,
+            y: nextCamera.position.y,
+            z: nextCamera.position.z
+        }, 500)
         .easing(TWEEN.Easing.Exponential.InOut)
         .start();
 
-    new TWEEN.Tween(camera.rotation)
-        .to({ x: lookAt.x, y: lookAt.y, z: lookAt.z }, 2000)
+    new TWEEN.Tween(controls.target)
+        .to({
+            x: nextPainting.position.x,
+            y: nextPainting.position.y,
+            z: nextPainting.position.z
+        }, 500)
         .easing(TWEEN.Easing.Exponential.InOut)
         .start();
-
-        camera.lookAt(location.position);
-
 }
 
 function transform(targets: THREE.Object3D[], duration: number): void {
@@ -169,13 +276,10 @@ function onWindowResize() {
 }
 
 function animate() {
-
     requestAnimationFrame(animate);
-
+    //render();
     TWEEN.update();
-
     controls.update();
-
 }
 
 function render() {
