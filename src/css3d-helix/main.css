@@ -17,13 +17,31 @@ html, body {
     height: 100%;
     background-color: #000000;
 }
+
+#page-title {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    background-color: #000000;
+    color: white;
+    width: 100%;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 0rem 3rem;
+    .desc{
+        font-size: 1rem;
+        font-weight: normal;
+    }
+
+}
 #poll {
     background-color: #000000;
     color: #8ff;
     width: 100%;
     font-size: 3rem;
     text-align: center;
-    padding: 10rem 3rem;
+    padding: 10rem 3rem 3rem 3rem;
 }
 
 #form {
@@ -32,8 +50,16 @@ html, body {
     color: #8ff;
     font-size: 3rem;
     text-align: center;
-    padding: 10rem 3rem;
+    padding: 3rem;
 
+    #form-items {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 60%;
+        margin: 0 auto;
+    }
 }
 
 a {

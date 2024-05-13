@@ -37,6 +37,11 @@ const cameraHolders: THREE.Object3D[] = [];
  */
 let currentPaintingIndex = 0;
 
+/**
+ * 마지막으로 보고 있던 그림의 인덱스
+ */
+let lastPaintingIndex = -1;
+
 let lastMoveTime = Date.now();
 
 /**
@@ -47,13 +52,13 @@ let moveLimit = 50;
 function createPaintingCSS(painting: Painting) {
     const frame = document.createElement('div');
     frame.className = 'element';
-    frame.style.width = '20rem';
+    frame.style.width = '24rem';
     frame.style.height = 'fit-content';
     frame.style.backgroundColor = 'rgba(0,127,127,' + (Math.random() * 0.5 + 0.25) + ')';
 
     const img = document.createElement('img');
     img.src = `/assets/images/paintings/${painting.file}`;
-    img.style.width = '20rem';
+    img.style.width = '24rem';
     img.style.height = '30rem';
     frame.appendChild(img);
 
@@ -108,19 +113,22 @@ function addPaintingCheckBox() {
         div.style.display = 'flex';
         div.style.alignItems = 'center';
         div.style.justifyContent = "flex-start";
-        div.style.width = '100%';
         div.style.paddingLeft = '1rem';
+        div.style.width = '100%';
         div.style.fontSize = '1.5rem';
+        div.style.textAlign = 'left';
 
         const inputEl = document.createElement('input');
         inputEl.type = 'checkbox';
         inputEl.style.width = '1.5rem';
         inputEl.style.height = '1.5rem';
         inputEl.style.marginRight = '1rem';
+        inputEl.style.flex = '0 0 auto';
         div.appendChild(inputEl);
 
-        const label = document.createElement('label');
-        label.innerText = painting.name;
+        const label = document.createElement('div');
+        label.innerText = painting.name == null || painting.name == '' ? 'Unknown' : painting.name;
+        label.style.flex = '1 1 auto';
         div.appendChild(label);
 
         formItemsEl.appendChild(div);
@@ -161,7 +169,7 @@ function init() {
         scene.add(paintingCSS);
         paintingItems.push(paintingCSS);
 
-        const theta = i * 0.3 + Math.PI;
+        const theta = i * 0.35 + Math.PI;
         const y = - (i * 80) + 450;
 
         const paintingHolder = new THREE.Object3D();
@@ -231,22 +239,32 @@ function moveCameraToPreviousPainting() {
     lastMoveTime = Date.now();
 }
 
+function scalePainting(index: number, scale: number) {
+    if (index < 0 || index >= paintingItems.length) {
+        return;
+    }
+    const painting = paintingItems[index];
+    new TWEEN.Tween(painting.scale)
+        .to({
+            x: scale,
+            y: scale,
+            z: scale
+        }, 500)
+        .easing(TWEEN.Easing.Exponential.InOut)
+        .start();
+
+    new TWEEN.Tween({})
+        .to({}, 1000)
+        .onUpdate(() => render())
+        .start();
+}
+
 function lookAtPainting(index: number) {
     if (index < 0 || index >= paintingItems.length) {
         return;
     }
     const nextCamera = cameraHolders[index];
     const nextPainting = paintingHolders[index];
-
-    const painting = paintingItems[index];
-    new TWEEN.Tween(painting.scale)
-        .to({
-            x: 1.5,
-            y: 1.5,
-            z: 1.5
-        }, 1000)
-        .easing(TWEEN.Easing.Exponential.InOut)
-        .start();
 
     new TWEEN.Tween(controls.object.position)
         .to({
@@ -270,6 +288,11 @@ function lookAtPainting(index: number) {
         .to({}, 1000)
         .onUpdate(() => render())
         .start();
+
+    scalePainting(lastPaintingIndex, 1);
+    scalePainting(index, 1.5);
+
+    lastPaintingIndex = currentPaintingIndex;
 }
 
 function transform(targets: THREE.Object3D[], duration: number): void {
