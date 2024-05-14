@@ -49,6 +49,11 @@ let lastMoveTime = Date.now();
  */
 let moveLimit = 50;
 
+/**
+ * 가로모드 여부
+ */
+let landscape = true;
+
 function createPaintingCSS(painting: Painting) {
     const frame = document.createElement('div');
     frame.className = 'element';
@@ -136,8 +141,9 @@ function addPaintingCheckBox() {
 }
 
 function init() {
+    landscape = containerEl.clientWidth > containerEl.clientHeight;
 
-    camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
+    camera = new THREE.PerspectiveCamera(40, containerEl.clientWidth / containerEl.clientHeight, 1, 10000);
     camera.position.z = 3000;
     camera.lookAt(0, 0, 0);
 
@@ -147,7 +153,7 @@ function init() {
 
 
     webGLRenderer = new THREE.WebGLRenderer();
-    webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+    webGLRenderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
     webGLRenderer.domElement.style.width = '100%';
     webGLRenderer.domElement.style.position = 'absolute';
     containerEl.appendChild(webGLRenderer.domElement);
