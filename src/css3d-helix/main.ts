@@ -15,7 +15,7 @@ let camera: THREE.PerspectiveCamera;
 let scene: THREE.Scene;
 let webGLRenderer: THREE.WebGLRenderer;
 let cssRenderer: CSS3DRenderer;
-let controls: OrbitControls;
+//let controls: OrbitControls;
 
 /**
  * 그림을 저장하는 배열
@@ -31,6 +31,8 @@ const paintingHolders: THREE.Object3D[] = [];
  * 헬릭스에서 카메라의 위치를 저장하는 배열
  */
 const cameraHolders: THREE.Object3D[] = [];
+
+const cameraLookAt = new THREE.Vector3(0, 0, 0);
 
 /**
  * 현재 보고 있는 그림의 인덱스
@@ -53,6 +55,7 @@ let moveLimit = 50;
  * 가로모드 여부
  */
 let landscape = true;
+
 
 function createPaintingCSS(painting: Painting) {
     const frame = document.createElement('div');
@@ -115,20 +118,11 @@ function addPaintingCheckBox() {
     const formItemsEl = document.getElementById('form-items')!;
     for (const painting of PAINTING_LIST) {
         const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.alignItems = 'center';
-        div.style.justifyContent = "flex-start";
-        div.style.paddingLeft = '1rem';
-        div.style.width = '100%';
-        div.style.fontSize = '1.5rem';
-        div.style.textAlign = 'left';
+        div.className = 'form-item';
 
         const inputEl = document.createElement('input');
+        inputEl.className = 'form-item-checkbox';
         inputEl.type = 'checkbox';
-        inputEl.style.width = '1.5rem';
-        inputEl.style.height = '1.5rem';
-        inputEl.style.marginRight = '1rem';
-        inputEl.style.flex = '0 0 auto';
         div.appendChild(inputEl);
 
         const label = document.createElement('div');
@@ -140,12 +134,20 @@ function addPaintingCheckBox() {
     }
 }
 
+/**
+ * returns true if there is a painting on the right side
+ * @returns 
+ */
+function isPaintingRemained() {
+    return currentPaintingIndex < paintingItems.length - 1
+}
+
 function init() {
     landscape = containerEl.clientWidth > containerEl.clientHeight;
 
     camera = new THREE.PerspectiveCamera(40, containerEl.clientWidth / containerEl.clientHeight, 1, 10000);
     camera.position.z = 3000;
-    camera.lookAt(0, 0, 0);
+    camera.lookAt(cameraLookAt);
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
@@ -165,10 +167,12 @@ function init() {
     cssRenderer.domElement.style.position = 'absolute';
     containerEl.appendChild(cssRenderer.domElement);
 
-    controls = new OrbitControls(camera, cssRenderer.domElement);
-    controls.addEventListener('change', () => render());
-    controls.enableZoom = false;
-    controls.enablePan = false;
+    // remove controls for handling touch events
+    // controls = new OrbitControls(camera, cssRenderer.domElement);
+    // controls.addEventListener('change', () => render());
+    // controls.enableZoom = false;
+    // controls.enablePan = false;
+    // controls.enableRotate = false;
 
     for (let i = 0; i < PAINTING_LIST.length; i++) {
         const paintingCSS = createPaintingCSS(PAINTING_LIST[i]);
@@ -194,7 +198,15 @@ function init() {
 
 
     window.addEventListener('resize', onWindowResize);
+
+    const handlingKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
     window.addEventListener("keydown", (event) => {
+        if(!handlingKeys.includes(event.key)) {
+            return;
+        }
+        if (isPaintingRemained()) {
+            event.preventDefault();
+        }
         switch (event.key) {
             case "ArrowRight":
                 moveCameraToNextPainting();
@@ -202,12 +214,19 @@ function init() {
             case "ArrowLeft":
                 moveCameraToPreviousPainting();
                 break;
+            case "ArrowUp":
+                moveCameraToPreviousPainting();
+                break;
+            case "ArrowDown":
+                moveCameraToNextPainting();
+                break;
+
         }
     });
 
     containerEl.addEventListener("wheel", (event) => {
         if (0 < event.deltaY) {
-            if (currentPaintingIndex < paintingItems.length) {
+            if (isPaintingRemained()) {
                 event.preventDefault();
                 moveCameraToNextPainting();
             }
@@ -218,9 +237,54 @@ function init() {
         console.log(currentPaintingIndex);
     });
 
+
+
+    let touchPos = { x: 0, y: 0 };
+    containerEl.addEventListener("touchstart", (event) => {
+        if (isPaintingRemained()) {
+            const touch = event.touches[0];
+            touchPos.x = touch.clientX;
+            touchPos.y = touch.clientY;
+
+            // prevent default behaviors
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    });
+
+    containerEl.addEventListener("touchend", (event) => {
+        const touch = event.changedTouches[0];
+        const dx = touch.clientX - touchPos.x;
+        const dy = touch.clientY - touchPos.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > 0) {
+                moveCameraToPreviousPainting();
+            }
+            else {
+                if (isPaintingRemained()) {
+                    moveCameraToNextPainting();
+                }
+            }
+        }
+        else {
+            if (dy > 0) {
+                moveCameraToPreviousPainting();
+            }
+            else {
+                if (isPaintingRemained()) {
+                    moveCameraToNextPainting();
+                }
+            }
+        }
+    });
+
+
+
     transform(paintingHolders, 2000);
     lookAtPainting(0);
-    addNavButtons();
+    if (landscape) {
+        addNavButtons();
+    }
 
     addPaintingCheckBox();
 }
@@ -272,7 +336,8 @@ function lookAtPainting(index: number) {
     const nextCamera = cameraHolders[index];
     const nextPainting = paintingHolders[index];
 
-    new TWEEN.Tween(controls.object.position)
+    //new TWEEN.Tween(controls.object.position)
+    new TWEEN.Tween(camera.position)
         .to({
             x: nextCamera.position.x,
             y: nextCamera.position.y,
@@ -281,7 +346,8 @@ function lookAtPainting(index: number) {
         .easing(TWEEN.Easing.Exponential.InOut)
         .start();
 
-    new TWEEN.Tween(controls.target)
+    //new TWEEN.Tween(controls.target)
+    new TWEEN.Tween(cameraLookAt)
         .to({
             x: nextPainting.position.x,
             y: nextPainting.position.y,
@@ -295,8 +361,11 @@ function lookAtPainting(index: number) {
         .onUpdate(() => render())
         .start();
 
-    scalePainting(lastPaintingIndex, 1);
-    scalePainting(index, 1.5);
+    if (landscape) {
+        scalePainting(lastPaintingIndex, 1);
+        scalePainting(index, 1.5);
+    }
+
 
     lastPaintingIndex = currentPaintingIndex;
 }
@@ -345,14 +414,17 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame(animate);
-    //render();
     TWEEN.update();
-    controls.update();
+    //controls.update();
+
+    // on demand rendering
+    //    render();
 }
 
 function render() {
     webGLRenderer.render(scene, camera);
     cssRenderer.render(scene, camera);
+    camera.lookAt(cameraLookAt);
 }
 
 init();
